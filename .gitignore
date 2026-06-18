@@ -11,3 +11,4 @@ $RECYCLE.BIN/
 *.swo
 
 .kotlin/
+temp/
