@@ -2,42 +2,47 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
-    android:viewportWidth="512"
-    android:viewportHeight="512">
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!--
+        Adaptive icon safe zone: center 66dp (21dp padding on each side)
+        Content scaled to fit within the safe zone.
+        Original SVG viewBox: ~512x512, scaled to 66dp centered area.
+        Scale factor: 66/512 ≈ 0.1289
+        Offset: 21 + (66 - 512*0.1289)/2 ≈ 21
+    -->
+
     <!-- Main card background -->
     <path
-        android:pathData="M32,8h448c26.5,0 48,21.5 48,48v352c0,26.5 -21.5,48 -48,48H32c-26.5,0 -48,-21.5 -48,-48V56C-16,29.5 5.5,8 32,8z"
+        android:pathData="M25.1,22.6h57.8c3.4,0 6.1,2.8 6.1,6.1v45.4c0,3.4 -2.8,6.1 -6.1,6.1H25.1c-3.4,0 -6.1,-2.8 -6.1,-6.1V28.7C19,25.3 21.7,22.6 25.1,22.6z"
         android:fillColor="#D6E8FC"/>
+
     <!-- Title bar -->
     <path
-        android:pathData="M72,56h224c17.7,0 32,14.3 32,32v0c0,17.7 -14.3,32 -32,32H72c-17.7,0 -32,-14.3 -32,-32v0C40,70.3 54.3,56 72,56z"
+        android:pathData="M30.2,28.3h28.7c2.3,0 4.1,1.8 4.1,4.1s-1.8,4.1 -4.1,4.1H30.2c-2.3,0 -4.1,-1.8 -4.1,-4.1S27.9,28.3 30.2,28.3z"
         android:fillColor="#FFFFFF"/>
+
     <!-- Line 2 -->
     <path
-        android:pathData="M72,144h368c17.7,0 32,14.3 32,32v0c0,17.7 -14.3,32 -32,32H72c-17.7,0 -32,-14.3 -32,-32v0C40,158.3 54.3,144 72,144z"
+        android:pathData="M30.2,39.6h47.1c2.3,0 4.1,1.8 4.1,4.1s-1.8,4.1 -4.1,4.1H30.2c-2.3,0 -4.1,-1.8 -4.1,-4.1S27.9,39.6 30.2,39.6z"
         android:fillColor="#FFFFFF"/>
+
     <!-- Line 3 -->
     <path
-        android:pathData="M72,232h368c17.7,0 32,14.3 32,32v0c0,17.7 -14.3,32 -32,32H72c-17.7,0 -32,-14.3 -32,-32v0C40,246.3 54.3,232 72,232z"
+        android:pathData="M30.2,50.9h47.1c2.3,0 4.1,1.8 4.1,4.1s-1.8,4.1 -4.1,4.1H30.2c-2.3,0 -4.1,-1.8 -4.1,-4.1S27.9,50.9 30.2,50.9z"
         android:fillColor="#FFFFFF"/>
+
     <!-- Line 4 (shorter) -->
     <path
-        android:pathData="M72,320h336c17.7,0 32,14.3 32,32v0c0,17.7 -14.3,32 -32,32H72c-17.7,0 -32,-14.3 -32,-32v0C40,334.3 54.3,320 72,32z"
+        android:pathData="M30.2,62.2h43.2c2.3,0 4.1,1.8 4.1,4.1s-1.8,4.1 -4.1,4.1H30.2c-2.3,0 -4.1,-1.8 -4.1,-4.1S27.9,62.2 30.2,62.2z"
         android:fillColor="#FFFFFF"/>
+
     <!-- Pen body (rotated rectangle) -->
     <path
-        android:pathData="M390.57,110.17l67,0l0,335l-67,0l0,-335z"
+        android:pathData="M60.5,33.3l8.6,0l0,43l-8.6,0l0,-43z"
         android:fillColor="#8FBEEC"
         android:rotation="45"
-        android:pivotX="424.065"
-        android:pivotY="277.674"/>
-    <!-- Pen tip -->
-    <path
-        android:pathData="M242.59,397.09c0,0 67.31,0 67.31,0c0,0 -32.31,56.92 -32.38,56.54"
-        android:strokeColor="#8FBEEC"
-        android:strokeWidth="4"
-        android:fillColor="#00000000"
-        android:rotation="45"
-        android:pivotX="276.239"
-        android:pivotY="425.36"/>
+        android:pivotX="64.9"
+        android:pivotY="54.8"/>
+
 </vector>

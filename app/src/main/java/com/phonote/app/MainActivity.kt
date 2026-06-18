@@ -54,19 +54,29 @@ import java.util.*
 class MainActivity : ComponentActivity() {
     private var httpServer: NotesHttpServer? = null
     private var onTreePicked: ((android.net.Uri) -> Unit)? = null
-    private var cachedIp: String = "获取中..."
 
     private val treePicker = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
         uri?.let { onTreePicked?.invoke(it) }
     }
+
+    private fun getPrefs() = getSharedPreferences("phonote_prefs", MODE_PRIVATE)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         WindowCompat.setDecorFitsSystemWindows(window, false)
         setContent {
-            val themeMode = remember { mutableStateOf(ThemeMode.LIGHT) }
+            val savedTheme = remember {
+                val name = getPrefs().getString("theme_mode", "LIGHT") ?: "LIGHT"
+                try { ThemeMode.valueOf(name) } catch (_: Exception) { ThemeMode.LIGHT }
+            }
+            val themeMode = remember { mutableStateOf(savedTheme) }
             val serverIpState = remember { mutableStateOf("获取中...") }
+
+            LaunchedEffect(themeMode.value) {
+                getPrefs().edit().putString("theme_mode", themeMode.value.name).apply()
+            }
+
             PhonoteTheme(themeMode = themeMode.value) {
                 PhonoteApp(
                     httpServer = httpServer,
@@ -85,7 +95,6 @@ class MainActivity : ComponentActivity() {
         if (start) {
             if (httpServer == null) httpServer = NotesHttpServer(this, 8080) { }
             try { httpServer?.start() } catch (_: Exception) {}
-            // Compute IP on background thread, then update state
             lifecycleScope.launch(Dispatchers.IO) {
                 val ip = httpServer?.getLocalIpAddress() ?: "unknown"
                 withContext(Dispatchers.Main) { serverIpState.value = ip }
@@ -93,7 +102,6 @@ class MainActivity : ComponentActivity() {
         } else {
             httpServer?.stop(); httpServer = null
             serverIpState.value = "获取中..."
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancelAll()
         }
     }
 
@@ -182,27 +190,63 @@ enum class ThemeMode(val label: String) { LIGHT("浅色"), DARK("深色"), SYSTE
 
 @Composable
 fun PhonoteTheme(themeMode: ThemeMode = ThemeMode.LIGHT, content: @Composable () -> Unit) {
-    val lightScheme = lightColorScheme(
-        primary = Color(0xFF1976D2), onPrimary = Color.White, primaryContainer = Color(0xFFE3F2FD),
-        onPrimaryContainer = Color(0xFF0D47A1), secondary = Color(0xFF455A64), secondaryContainer = Color(0xFFCFD8DC),
-        background = Color(0xFFFAFAFA), surface = Color.White, surfaceVariant = Color(0xFFF5F5F5),
-        onBackground = Color(0xFF1A1A1A), onSurface = Color(0xFF1A1A1A), outline = Color(0xFFE0E0E0), error = Color(0xFFEF5350)
-    )
-    val darkScheme = darkColorScheme(
-        primary = Color(0xFF90CAF9), onPrimary = Color(0xFF003258), primaryContainer = Color(0xFF00497D),
-        onPrimaryContainer = Color(0xFFD1E4FF), secondary = Color(0xFF90A4AE), secondaryContainer = Color(0xFF37474F),
-        background = Color(0xFF121212), surface = Color(0xFF1E1E1E), surfaceVariant = Color(0xFF2C2C2C),
-        onBackground = Color(0xFFE0E0E0), onSurface = Color(0xFFE0E0E0), outline = Color(0xFF424242), error = Color(0xFFEF5350)
-    )
-    val colorScheme = when (themeMode) {
-        ThemeMode.LIGHT -> lightScheme
-        ThemeMode.DARK -> darkScheme
+    val context = LocalContext.current
+    val isDark = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
         ThemeMode.SYSTEM -> {
-            val ctx = LocalContext.current
-            val isDark = (ctx.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            if (isDark) darkScheme else lightScheme
+            (context.resources.configuration.uiMode and
+                    android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                    android.content.res.Configuration.UI_MODE_NIGHT_YES
         }
     }
+
+    val colorScheme = if (isDark) {
+        darkColorScheme(
+            primary = Color(context.getColor(R.color.md_theme_dark_primary)),
+            onPrimary = Color(context.getColor(R.color.md_theme_dark_onPrimary)),
+            primaryContainer = Color(context.getColor(R.color.md_theme_dark_primaryContainer)),
+            onPrimaryContainer = Color(context.getColor(R.color.md_theme_dark_onPrimaryContainer)),
+            secondary = Color(context.getColor(R.color.md_theme_dark_secondary)),
+            onSecondary = Color(context.getColor(R.color.md_theme_dark_onSecondary)),
+            secondaryContainer = Color(context.getColor(R.color.md_theme_dark_secondaryContainer)),
+            onSecondaryContainer = Color(context.getColor(R.color.md_theme_dark_onSecondaryContainer)),
+            tertiary = Color(context.getColor(R.color.md_theme_dark_tertiary)),
+            onTertiary = Color(context.getColor(R.color.md_theme_dark_onTertiary)),
+            background = Color(context.getColor(R.color.md_theme_dark_background)),
+            onBackground = Color(context.getColor(R.color.md_theme_dark_onBackground)),
+            surface = Color(context.getColor(R.color.md_theme_dark_surface)),
+            onSurface = Color(context.getColor(R.color.md_theme_dark_onSurface)),
+            surfaceVariant = Color(context.getColor(R.color.md_theme_dark_surfaceVariant)),
+            onSurfaceVariant = Color(context.getColor(R.color.md_theme_dark_onSurfaceVariant)),
+            outline = Color(context.getColor(R.color.md_theme_dark_outline)),
+            error = Color(context.getColor(R.color.md_theme_dark_error)),
+            onError = Color(context.getColor(R.color.md_theme_dark_onError)),
+        )
+    } else {
+        lightColorScheme(
+            primary = Color(context.getColor(R.color.md_theme_light_primary)),
+            onPrimary = Color(context.getColor(R.color.md_theme_light_onPrimary)),
+            primaryContainer = Color(context.getColor(R.color.md_theme_light_primaryContainer)),
+            onPrimaryContainer = Color(context.getColor(R.color.md_theme_light_onPrimaryContainer)),
+            secondary = Color(context.getColor(R.color.md_theme_light_secondary)),
+            onSecondary = Color(context.getColor(R.color.md_theme_light_onSecondary)),
+            secondaryContainer = Color(context.getColor(R.color.md_theme_light_secondaryContainer)),
+            onSecondaryContainer = Color(context.getColor(R.color.md_theme_light_onSecondaryContainer)),
+            tertiary = Color(context.getColor(R.color.md_theme_light_tertiary)),
+            onTertiary = Color(context.getColor(R.color.md_theme_light_onTertiary)),
+            background = Color(context.getColor(R.color.md_theme_light_background)),
+            onBackground = Color(context.getColor(R.color.md_theme_light_onBackground)),
+            surface = Color(context.getColor(R.color.md_theme_light_surface)),
+            onSurface = Color(context.getColor(R.color.md_theme_light_onSurface)),
+            surfaceVariant = Color(context.getColor(R.color.md_theme_light_surfaceVariant)),
+            onSurfaceVariant = Color(context.getColor(R.color.md_theme_light_onSurfaceVariant)),
+            outline = Color(context.getColor(R.color.md_theme_light_outline)),
+            error = Color(context.getColor(R.color.md_theme_light_error)),
+            onError = Color(context.getColor(R.color.md_theme_light_onError)),
+        )
+    }
+
     MaterialTheme(colorScheme = colorScheme, content = content)
 }
 
@@ -406,7 +450,7 @@ fun SearchScreen(query: String, results: List<NoteEntity>, highlightKeyword: Str
 
 private fun highlightMatch(text: String, keyword: String): androidx.compose.ui.text.AnnotatedString {
     if (keyword.isBlank()) return androidx.compose.ui.text.AnnotatedString(text)
-    return buildAnnotatedString { var s = 0; val lt = text.lowercase(); val lk = keyword.lowercase(); while (true) { val i = lt.indexOf(lk, s); if (i < 0) { append(text.substring(s)); break }; append(text.substring(s, i)); withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xFFFF6F00))) { append(text.substring(i, i + keyword.length)) }; s = i + keyword.length } }
+    return buildAnnotatedString { var s = 0; val lt = text.lowercase(); val lk = keyword.lowercase(); while (true) { val i = lt.indexOf(lk, s); if (i < 0) { append(text.substring(s)); break }; append(text.substring(s, i)); withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = Color(0xB1FF6F00))) { append(text.substring(i, i + keyword.length)) }; s = i + keyword.length } }
 }
 
 private fun countMatches(text: String, keyword: String): Int {

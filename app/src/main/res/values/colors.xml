@@ -1,5 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="seed">#2196F3</color>
+    <!-- Launcher icon background -->
     <color name="ic_launcher_background">#D6E8FC</color>
+
+    <!-- Material 3 Light Theme Colors -->
+    <color name="md_theme_light_primary">#FFA04E</color>
+    <color name="md_theme_light_onPrimary">#FFFFFF</color>
+    <color name="md_theme_light_primaryContainer">#E3F2FD</color>
+    <color name="md_theme_light_onPrimaryContainer">#0D47A1</color>
+    <color name="md_theme_light_secondary">#4B4B4B</color>
+    <color name="md_theme_light_onSecondary">#FFFFFF</color>
+    <color name="md_theme_light_secondaryContainer">#CFD8DC</color>
+    <color name="md_theme_light_onSecondaryContainer">#263238</color>
+    <color name="md_theme_light_tertiary">#00796B</color>
+    <color name="md_theme_light_onTertiary">#FFFFFF</color>
+    <color name="md_theme_light_background">#FAFAFA</color>
+    <color name="md_theme_light_onBackground">#1A1A1A</color>
+    <color name="md_theme_light_surface">#FFFFFF</color>
+    <color name="md_theme_light_onSurface">#1A1A1A</color>
+    <color name="md_theme_light_surfaceVariant">#F5F5F5</color>
+    <color name="md_theme_light_onSurfaceVariant">#616161</color>
+    <color name="md_theme_light_outline">#757575</color>
+    <color name="md_theme_light_error">#EF5350</color>
+    <color name="md_theme_light_onError">#FFFFFF</color>
+    <color name="md_theme_light_inverseSurface">#303030</color>
+    <color name="md_theme_light_inverseOnSurface">#F5F5F5</color>
+    <color name="md_theme_light_inversePrimary">#90CAF9</color>
+
+    <!-- Status bar -->
+    <color name="md_theme_light_statusBar">#1565C0</color>
 </resources>
