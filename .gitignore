@@ -1,0 +1,13 @@
+build/
+.gradle/
+
+# Mac 系统隐藏文件（桌面配置、缩略图等）
+.DS_Store
+# Windows 系统隐藏文件（回收站、临时文件等）
+Thumbs.db
+$RECYCLE.BIN/
+# Linux 系统临时文件（如 vim 编辑生成的 .swp 文件）
+*.swp
+*.swo
+
+.kotlin/

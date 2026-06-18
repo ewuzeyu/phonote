@@ -1,0 +1,6 @@
+-dontwarn org.nanohttpd.**
+-keep class org.nanohttpd.** { *; }
+-dontwarn com.google.gson.**
+-keep class com.google.gson.** { *; }
+-keep class com.phonote.app.NoteEntity { *; }
+-keep class com.phonote.app.NoteDao { *; }
