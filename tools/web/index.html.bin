@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phonote</title>
+  <link rel="stylesheet" href="./dev/github-markdown.min.css">
+  <link rel="stylesheet"
+    href="./dev/hljs.min.css">
+  <script src="./dev/marked.js"></script>
+  <script src="./dev/highlight.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      transition: background .3s, color .3s
+    }
+
+    body.light {
+      --bg: #fafafa;
+      --surface: #fff;
+      --text: #1a1a1a;
+      --text2: #666;
+      --primary: #1976d2;
+      --primary-light: #e3f2fd;
+      --border: #e0e0e0;
+      --hover: #f5f5f5;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .1)
+    }
+
+    body.dark {
+      --bg: #121212;
+      --surface: #1e1e1e;
+      --text: #e0e0e0;
+      --text2: #999;
+      --primary: #90caf9;
+      --primary-light: rgba(144, 202, 249, .12);
+      --border: #424242;
+      --hover: #2c2c2c;
+      --shadow: 0 1px 3px rgba(0, 0, 0, .3)
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    .app {
+      margin: 0 auto;
+      padding: 16px
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+      padding: 12px 0;
+      border-bottom: 2px solid var(--primary)
+    }
+
+    .header h1 {
+      font-size: 24px;
+      color: var(--primary)
+    }
+
+    .search-box {
+      flex: 1
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: var(--surface);
+      color: var(--text)
+    }
+
+    .search-box input:focus {
+      border-color: var(--primary)
+    }
+
+    .breadcrumb {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      color: var(--text2);
+      flex-wrap: wrap
+    }
+
+    .breadcrumb span {
+      cursor: pointer;
+      color: var(--primary)
+    }
+
+    .breadcrumb span:hover {
+      text-decoration: underline
+    }
+
+    .note-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px
+    }
+
+    .note-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .2s;
+      color: inherit
+    }
+
+    .note-item:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow)
+    }
+
+    .note-icon {
+      font-size: 20px;
+      min-width: 24px;
+      text-align: center
+    }
+
+    .note-info {
+      flex: 1;
+      min-width: 0
+    }
+
+    .note-title {
+      font-weight: 600;
+      font-size: 15px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .note-meta {
+      font-size: 12px;
+      color: var(--text2);
+      margin-top: 2px
+    }
+
+    .note-preview {
+      font-size: 13px;
+      color: var(--text2);
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis
+    }
+
+    .note-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity .2s
+    }
+
+    .note-item:hover .note-actions {
+      opacity: 1
+    }
+
+    .action-btn {
+      padding: 4px 8px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px
+    }
+
+    .action-btn-del {
+      background: #ef5350;
+      color: #fff
+    }
+
+    .editor {
+      display: none
+    }
+
+    .editor.active {
+      display: block
+    }
+
+    .editor-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all .2s
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff
+    }
+
+    .btn-primary:hover {
+      opacity: .85
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border)
+    }
+
+    .btn-secondary:hover {
+      background: var(--hover)
+    }
+
+    .btn-danger {
+      background: #ef5350;
+      color: #fff
+    }
+
+    .editor-title {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 18px;
+      font-weight: 600;
+      outline: none;
+      background: var(--surface);
+      color: var(--text)
+    }
+
+    .editor-title:focus {
+      border-color: var(--primary)
+    }
+
+    .content-area {
+      display: flex;
+      gap: 16px;
+      height: calc(100vh - 250px)
+    }
+
+    .editor-pane,
+    .preview-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column
+    }
+
+    .editor-pane textarea {
+      flex: 1;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      line-height: 1.8;
+      resize: none;
+      outline: none;
+      min-height: 400px;
+      background: var(--surface);
+      color: var(--text)
+    }
+
+    .editor-pane textarea:focus {
+      border-color: var(--primary)
+    }
+
+    .preview-pane {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--surface)
+    }
+
+    .auto-save-indicator {
+      font-size: 12px;
+      color: var(--text2);
+      margin-left: 8px
+    }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text2)
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 12px 24px;
+      background: #333;
+      color: #fff;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity .3s
+    }
+
+    .toast.show {
+      opacity: 1
+    }
+
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .5);
+      z-index: 999;
+      align-items: center;
+      justify-content: center
+    }
+
+    .modal-overlay.active {
+      display: flex
+    }
+
+    .modal {
+      background: var(--surface);
+      padding: 24px;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, .2)
+    }
+
+    .modal h3 {
+      margin-bottom: 16px
+    }
+
+    .modal input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      margin-bottom: 16px;
+      background: var(--surface);
+      color: var(--text)
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end
+    }
+
+    .theme-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 18px;
+      color: var(--text);
+      transition: all .2s
+    }
+
+    .theme-toggle:hover {
+      background: var(--hover)
+    }
+
+    @media(max-width:768px) {
+      .content-area {
+        flex-direction: column;
+        height: auto
+      }
+
+      .editor-pane textarea {
+        min-height: 250px
+      }
+
+      .preview-pane {
+        min-height: 250px
+      }
+    }
+  </style>
+</head>
+
+<body class="light">
+  <div class="app" id="app">
+    <div class="header">
+      <h1>Phonote</h1>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="搜索笔记..." oninput="handleSearch(this.value)">
+      </div>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="切换主题">浅色主题</button>
+      <button class="btn btn-secondary" onclick="showNewFolderModal()">新建文件夹</button>
+      <button class="btn btn-primary" onclick="createNewNote()">新建笔记</button>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div id="listView">
+      <div class="note-list" id="noteList"></div>
+    </div>
+    <div class="editor" id="editorView">
+      <div class="editor-header">
+        <button class="btn btn-secondary" onclick="goBack()">← 返回</button>
+        <input type="text" class="editor-title" id="noteTitle" placeholder="笔记标题...">
+        <button class="btn btn-primary" onclick="saveNote()">保存</button>
+        <button class="btn btn-danger" onclick="deleteCurrentNote()">删除</button>
+        <span class="auto-save-indicator" id="autoSaveIndicator"></span>
+      </div>
+      <div class="content-area">
+        <div class="editor-pane">
+          <textarea id="noteContent" placeholder="使用 Markdown 编写..." oninput="onContentChange()"></textarea>
+        </div>
+        <div class="preview-pane markdown-body" id="previewPane"></div>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+  <div class="modal-overlay" id="newModal">
+    <div class="modal">
+      <h3 id="modalTitle">新建文件夹</h3>
+      <input type="text" id="modalInput" placeholder="名称...">
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="confirmModal()">确定</button>
+      </div>
+    </div>
+  </div>
+  <script>
+    /**
+     * Phonote - 笔记应用前端主模块
+     * 使用现代 ES6+ 语法重构，包含状态管理、API 交互、UI 渲染等功能
+     */
+
+    // ==================== 全局状态 ====================
+
+    /** 当前文件夹 ID（根目录为 0） */
+    let currentFolderId = 0;
+
+    /** 当前正在编辑的笔记 ID */
+    let currentNoteId = null;
+
+    /** 文件夹导航栈，用于面包屑和返回导航 */
+    let folderStack = [];
+
+    /** 搜索防抖定时器 */
+    let searchTimeout = null;
+
+    /** 自动保存防抖定时器 */
+    let autoSaveTimer = null;
+
+
+    // ==================== 主题管理 ====================
+
+    /**
+     * 初始化主题设置
+     * 从 localStorage 读取保存的主题偏好，默认使用浅色主题
+     */
+    function initTheme() {
+      const theme = localStorage.getItem('phonote_theme') || 'light';
+      document.body.className = theme;
+      document.getElementById('themeToggle').textContent =
+        theme === 'dark' ? '深色主题' : '浅色主题';
+    }
+
+    /**
+     * 切换明暗主题
+     * 切换 body 的 className 并将偏好保存到 localStorage
+     */
+    function toggleTheme() {
+      const newTheme = document.body.className === 'dark' ? 'light' : 'dark';
+      document.body.className = newTheme;
+      localStorage.setItem('phonote_theme', newTheme);
+      document.getElementById('themeToggle').textContent =
+        newTheme === 'dark' ? '深色主题' : '浅色主题';
+    }
+
+
+    // ==================== API 工具 ====================
+
+    /**
+     * 封装 fetch 请求，自动设置 JSON 请求头并解析响应
+     * @param {string} url - 请求地址
+     * @param {Object} [options={}] - fetch 配置选项
+     * @returns {Promise<Object>} 解析后的 JSON 数据
+     */
+    async function fetchJSON(url, options = {}) {
+      const mergedOptions = {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8',
+          ...options.headers,
+        },
+      };
+      const response = await fetch(url, mergedOptions);
+      return response.json();
+    }
+
+
+    // ==================== 文件夹与笔记列表 ====================
+
+    /**
+     * 加载指定文件夹的内容
+     * @param {number} [id=0] - 文件夹 ID，默认为根目录
+     */
+    async function loadFolder(id = 0) {
+      currentFolderId = id;
+      const data = await fetchJSON(`/api/notes?folderId=${id}`);
+      renderBreadcrumb();
+      renderNoteList(data.folders, data.notes);
+    }
+
+    /**
+     * 渲染面包屑导航
+     * 根据 folderStack 构建可点击的导航路径
+     */
+    function renderBreadcrumb() {
+      const breadcrumb = document.getElementById('breadcrumb');
+      let html = '<span onclick="navigateTo(0)">主页</span>';
+
+      folderStack.forEach((folder) => {
+        html += ` / <span onclick="navigateTo(${folder.id})">${escapeHtml(folder.title)}</span>`;
+      });
+
+      breadcrumb.innerHTML = html;
+    }
+
+    /**
+     * 渲染笔记和文件夹列表
+     * @param {Array} folders - 文件夹数组
+     * @param {Array} notes - 笔记数组
+     */
+    function renderNoteList(folders, notes) {
+      const list = document.getElementById('noteList');
+
+      // 空状态处理
+      if (!folders.length && !notes.length) {
+        list.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">暂无内容，创建一个新笔记吧</div>
+      </div>
+    `;
+        return;
+      }
+
+      let html = '';
+
+      // 渲染文件夹项
+      folders.forEach((folder) => {
+        const escapedTitle = escapeHtml(folder.title);
+        html += `
+      <div class="note-item">
+        <div class="note-icon" onclick="openFolder(${folder.id}, '${escapedTitle}')">📁</div>
+        <div class="note-info" onclick="openFolder(${folder.id}, '${escapedTitle}')">
+          <div class="note-title">${escapedTitle}</div>
+          <div class="note-meta">${formatDate(folder.updatedAt)}</div>
+        </div>
+        <div class="note-actions">
+          <button class="action-btn action-btn-del" onclick="deleteFolder(${folder.id}, '${escapedTitle}')">
+            删除
+          </button>
+        </div>
+      </div>
+    `;
+      });
+
+      // 渲染笔记项
+      notes.forEach((note) => {
+        const preview = note.content
+          ? note.content.substring(0, 100).replace(/[#*`>\[\]]/g, '').trim()
+          : '';
+        html += `
+      <div class="note-item" onclick="openNote(${note.id})">
+        <div class="note-icon">📄</div>
+        <div class="note-info">
+          <div class="note-title">${escapeHtml(note.title)}</div>
+          <div class="note-preview">${escapeHtml(preview)}</div>
+          <div class="note-meta">${formatDate(note.updatedAt)}</div>
+        </div>
+      </div>
+    `;
+      });
+
+      list.innerHTML = html;
+    }
+
+    /**
+     * 打开文件夹并推入导航栈
+     * @param {number} id - 文件夹 ID
+     * @param {string} title - 文件夹标题
+     */
+    function openFolder(id, title) {
+      folderStack.push({ id, title });
+      loadFolder(id);
+    }
+
+    /**
+     * 导航到指定文件夹层级
+     * 从导航栈中弹出直到目标层级，然后重新加载
+     * @param {number} id - 目标文件夹 ID（0 表示根目录）
+     */
+    function navigateTo(id) {
+      while (folderStack.length && folderStack[folderStack.length - 1].id !== id) {
+        folderStack.pop();
+      }
+      if (id === 0) {
+        folderStack = [];
+      }
+      loadFolder(id);
+    }
+
+    /**
+     * 删除文件夹（含确认弹窗）
+     * @param {number} id - 文件夹 ID
+     * @param {string} title - 文件夹标题
+     */
+    async function deleteFolder(id, title) {
+      if (!confirm(`确定删除文件夹 "${title}" 及其内容？`)) return;
+
+      await fetch(`/api/notes/${id}`, { method: 'DELETE' });
+      showToast('已删除');
+      loadFolder(currentFolderId);
+    }
+
+
+    // ==================== 笔记编辑器 ====================
+
+    /**
+     * 打开笔记编辑器
+     * 加载笔记内容并切换到编辑视图
+     * @param {number} id - 笔记 ID
+     */
+    async function openNote(id) {
+      const note = await fetchJSON(`/api/notes/${id}`);
+      currentNoteId = id;
+
+      document.getElementById('noteTitle').value = note.title;
+      document.getElementById('noteContent').value = note.content;
+      document.getElementById('listView').style.display = 'none';
+      document.getElementById('editorView').classList.add('active');
+      document.getElementById('autoSaveIndicator').textContent = '';
+
+      updatePreview();
+    }
+
+    /**
+     * 返回列表视图
+     * 清理编辑器状态并重新加载当前文件夹
+     */
+    function goBack() {
+      document.getElementById('editorView').classList.remove('active');
+      document.getElementById('listView').style.display = 'block';
+      currentNoteId = null;
+      clearTimeout(autoSaveTimer);
+      loadFolder(currentFolderId);
+    }
+
+    /**
+     * 手动保存当前笔记
+     */
+    async function saveNote() {
+      if (!currentNoteId) return;
+
+      const title = document.getElementById('noteTitle').value.trim();
+      const content = document.getElementById('noteContent').value;
+
+      if (!title) {
+        showToast('请输入标题');
+        return;
+      }
+
+      await fetch(`/api/notes/${currentNoteId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify({ title, content }),
+      });
+
+      showToast('已保存');
+      document.getElementById('autoSaveIndicator').textContent = '';
+    }
+
+    /**
+     * 内容变更回调（触发预览更新和自动保存）
+     */
+    function onContentChange() {
+      updatePreview();
+      clearTimeout(autoSaveTimer);
+      document.getElementById('autoSaveIndicator').textContent = '未保存...';
+
+      autoSaveTimer = setTimeout(async () => {
+        if (!currentNoteId) return;
+
+        const title = document.getElementById('noteTitle').value.trim();
+        const content = document.getElementById('noteContent').value;
+        if (!title) return;
+
+        await fetch(`/api/notes/${currentNoteId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({ title, content }),
+        });
+
+        document.getElementById('autoSaveIndicator').textContent = '已自动保存';
+        setTimeout(() => {
+          const indicator = document.getElementById('autoSaveIndicator');
+          if (indicator.textContent === '已自动保存') {
+            indicator.textContent = '';
+          }
+        }, 2000);
+      }, 3500);
+    }
+
+    /**
+     * 删除当前正在编辑的笔记
+     */
+    async function deleteCurrentNote() {
+      if (!currentNoteId) return;
+      if (!confirm('确定删除？')) return;
+
+      await fetch(`/api/notes/${currentNoteId}`, { method: 'DELETE' });
+      showToast('已删除');
+      goBack();
+    }
+
+    /**
+     * 创建新笔记并打开编辑器
+     */
+    async function createNewNote() {
+      const data = await fetchJSON('/api/notes', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: '新笔记',
+          content: '',
+          folderId: currentFolderId,
+          isFolder: false,
+        }),
+      });
+      openNote(data.id);
+    }
+
+
+    // ==================== 模态框（新建文件夹）====================
+
+    /**
+     * 显示新建文件夹模态框
+     */
+    function showNewFolderModal() {
+      document.getElementById('modalTitle').textContent = '新建文件夹';
+      document.getElementById('modalInput').value = '';
+      document.getElementById('newModal').classList.add('active');
+      document.getElementById('modalInput').focus();
+    }
+
+    /**
+     * 关闭模态框
+     */
+    function closeModal() {
+      document.getElementById('newModal').classList.remove('active');
+    }
+
+    /**
+     * 确认创建新文件夹
+     */
+    async function confirmModal() {
+      const value = document.getElementById('modalInput').value.trim();
+      if (value) {
+        await fetchJSON('/api/notes', {
+          method: 'POST',
+          body: JSON.stringify({
+            title: value,
+            content: '',
+            folderId: currentFolderId,
+            isFolder: true,
+          }),
+        });
+        loadFolder(currentFolderId);
+      }
+      closeModal();
+    }
+
+    // 模态框键盘事件：Enter 确认，Escape 取消
+    document.getElementById('modalInput').addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') confirmModal();
+      if (event.key === 'Escape') closeModal();
+    });
+
+
+    // ==================== 搜索 ====================
+
+    /**
+     * 处理搜索输入（带 300ms 防抖）
+     * @param {string} query - 搜索关键词
+     */
+    function handleSearch(query) {
+      clearTimeout(searchTimeout);
+
+      if (!query.trim()) {
+        loadFolder(currentFolderId);
+        return;
+      }
+
+      searchTimeout = setTimeout(async () => {
+        const data = await fetchJSON(`/api/notes/search?q=${encodeURIComponent(query)}`);
+        document.getElementById('breadcrumb').innerHTML = `<span>搜索: ${escapeHtml(query)}</span>`;
+        renderNoteList([], data.notes || []);
+      }, 300);
+    }
+
+
+    // ==================== Markdown 预览 ====================
+
+    /**
+     * 更新 Markdown 预览面板
+     * 使用 marked.js 解析并高亮代码块
+     */
+    function updatePreview() {
+      const content = document.getElementById('noteContent').value;
+      document.getElementById('previewPane').innerHTML = marked.parse(content);
+
+      document.querySelectorAll('pre code').forEach((block) => {
+        hljs.highlightElement(block);
+      });
+    }
+    // ==================== 工具函数 ====================
+
+    /**
+     * HTML 特殊字符转义
+     * @param {string} str - 原始字符串
+     * @returns {string} 转义后的安全字符串
+     */
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * 格式化时间戳为本地时间字符串
+     * @param {number|string} timestamp - 时间戳
+     * @returns {string} 格式化后的时间字符串（YYYY-MM-DD HH:mm）
+     */
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    /**
+     * 显示 Toast 提示（2秒后自动消失）
+     * @param {string} message - 提示内容
+     */
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2000);
+    }
+
+
+    // ==================== 快捷键与初始化 ====================
+
+    // Ctrl/Cmd + S 手动保存
+    document.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+        event.preventDefault();
+        saveNote();
+      }
+    });
+
+    // 应用初始化
+    initTheme();
+    loadFolder(0);
+  </script>
+</body>
+
+</html>

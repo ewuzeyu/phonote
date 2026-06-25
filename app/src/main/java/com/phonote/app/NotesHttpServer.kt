@@ -73,6 +73,19 @@ class NotesHttpServer(
             uri.startsWith("/api/notes/") && method == Method.PUT -> handleUpdate(session)
             uri == "/api/notes" && method == Method.POST -> handleCreate(session)
             uri.startsWith("/api/notes/") && method == Method.DELETE -> handleDelete(uri.removePrefix("/api/notes/"))
+            // Dev: serve files from external files directory (no permission needed)
+            uri == "/dev" && method == Method.GET -> {
+                val webDir = getWebDir()
+                jsonResp(mapOf("path" to webDir.absolutePath))
+            }
+            uri.startsWith("/dev/") && method == Method.GET -> {
+                val path = uri.removePrefix("/dev/")
+                val file = File(getWebDir(), path)
+                if (file.exists() && file.isFile) {
+                    val bytes = file.readBytes()
+                    newFixedLengthResponse(Response.Status.OK, getMimeType(path), ByteArrayInputStream(bytes), bytes.size.toLong())
+                } else notFound()
+            }
             // Static assets: serve any file from assets/ directory
             uri.startsWith("/") && method == Method.GET -> {
                 val assetPath = uri.trimStart('/')
@@ -210,6 +223,12 @@ function showToast(msg){var t=document.getElementById('toast');t.textContent=msg
     private fun notFound() = newFixedLengthResponse(Response.Status.NOT_FOUND, "application/json; charset=utf-8", """{"error":"not found"}""")
     private fun badRequest(msg: String) = newFixedLengthResponse(Response.Status.BAD_REQUEST, "application/json; charset=utf-8", """{"error":"$msg"}""")
     private fun jsonResp(data: Any) = newFixedLengthResponse(Response.Status.OK, "application/json; charset=utf-8", com.google.gson.Gson().toJson(data))
+
+    private fun getWebDir(): File {
+        val dir = File(context.getExternalFilesDir(null), "web")
+        if (!dir.exists()) dir.mkdirs()
+        return dir
+    }
 
     private fun getMimeType(path: String): String = when {
         path.endsWith(".html") -> "text/html; charset=utf-8"

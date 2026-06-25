@@ -3,6 +3,7 @@ package com.phonote.app
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Bundle
+import android.view.WindowManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -95,12 +96,15 @@ class MainActivity : ComponentActivity() {
         if (start) {
             if (httpServer == null) httpServer = NotesHttpServer(this, 8080) { }
             try { httpServer?.start() } catch (_: Exception) {}
+            // Keep screen on while server is running
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             lifecycleScope.launch(Dispatchers.IO) {
                 val ip = httpServer?.getLocalIpAddress() ?: "unknown"
                 withContext(Dispatchers.Main) { serverIpState.value = ip }
             }
         } else {
             httpServer?.stop(); httpServer = null
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             serverIpState.value = "获取中..."
         }
     }
