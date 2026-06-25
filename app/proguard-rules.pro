@@ -2,5 +2,5 @@
 -keep class org.nanohttpd.** { *; }
 -dontwarn com.google.gson.**
 -keep class com.google.gson.** { *; }
--keep class com.phonote.app.NoteEntity { *; }
--keep class com.phonote.app.NoteDao { *; }
+-keep class site.wuzeyu.phonote.NoteEntity { *; }
+-keep class site.wuzeyu.phonote.NoteDao { *; }
