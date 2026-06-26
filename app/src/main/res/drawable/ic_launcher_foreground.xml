@@ -15,12 +15,12 @@
     <!-- Main card background -->
     <path
         android:pathData="M25.1,22.6h57.8c3.4,0 6.1,2.8 6.1,6.1v45.4c0,3.4 -2.8,6.1 -6.1,6.1H25.1c-3.4,0 -6.1,-2.8 -6.1,-6.1V28.7C19,25.3 21.7,22.6 25.1,22.6z"
-        android:fillColor="#D6E8FC"/>
+        android:fillColor="#FF9800"/>
 
     <!-- Title bar -->
     <path
         android:pathData="M30.2,28.3h28.7c2.3,0 4.1,1.8 4.1,4.1s-1.8,4.1 -4.1,4.1H30.2c-2.3,0 -4.1,-1.8 -4.1,-4.1S27.9,28.3 30.2,28.3z"
-        android:fillColor="#FFFFFF"/>
+        android:fillColor="#93EBD1"/>
 
     <!-- Line 2 -->
     <path
@@ -38,11 +38,11 @@
         android:fillColor="#FFFFFF"/>
 
     <!-- Pen body (rotated rectangle) -->
-    <path
-        android:pathData="M60.5,33.3l8.6,0l0,43l-8.6,0l0,-43z"
-        android:fillColor="#8FBEEC"
-        android:rotation="45"
-        android:pivotX="64.9"
-        android:pivotY="54.8"/>
+<!--    <path-->
+<!--        android:pathData="M60.5,33.3l8.6,0l0,43l-8.6,0l0,-43z"-->
+<!--        android:fillColor="#FD66AC"-->
+<!--        android:rotation="45"-->
+<!--        android:pivotX="64.9"-->
+<!--        android:pivotY="54.8"/>-->
 
 </vector>
