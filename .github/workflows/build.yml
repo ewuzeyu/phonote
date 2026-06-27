@@ -39,6 +39,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version_name }}
           name: "Phonote v${{ steps.version.outputs.version_name }} (${{ steps.version.outputs.version_code }})"
           files: app/build/outputs/apk/debug/Phonote-v*.apk
           generate_release_notes: true

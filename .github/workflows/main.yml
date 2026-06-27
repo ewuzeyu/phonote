@@ -34,14 +34,15 @@ jobs:
       - name: Get version from build.gradle.kts
         id: version
         run: |
-          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | sed 's/.*= \([0-9]*\).*/\1/')
+          VERSION_NAME=$(grep -E '^\s*versionName\s*=\s*"[^"]*"' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_CODE=$(grep -E '^\s*versionCode\s*=\s*[0-9]+' app/build.gradle.kts | sed 's/.*= \([0-9]*\).*/\1/')
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ steps.version.outputs.version_name }}
           name: "Phonote v${{ steps.version.outputs.version_name }} (${{ steps.version.outputs.version_code }})"
           files: app/build/outputs/apk/debug/Phonote-v*.apk
           generate_release_notes: true
