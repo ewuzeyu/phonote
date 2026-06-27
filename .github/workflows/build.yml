@@ -21,7 +21,9 @@ jobs:
         run: chmod +x gradlew
 
       - name: Use official Gradle mirror for CI
-        run: sed -i 's|mirrors.cloud.tencent.com/gradle|services.gradle.org/distributions|g' gradle/wrapper/gradle-wrapper.properties
+        run: |
+          sed -i 's|mirrors.cloud.tencent.com/gradle|services.gradle.org/distributions|g' gradle/wrapper/gradle-wrapper.properties
+          sed -i '/maven.aliyun.com/d' settings.gradle.kts
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug
