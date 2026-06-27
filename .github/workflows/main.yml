@@ -23,6 +23,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Use official Gradle mirror for CI
+        run: sed -i 's|mirrors.cloud.tencent.com/gradle|services.gradle.org/distributions|g' gradle/wrapper/gradle-wrapper.properties
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
@@ -38,5 +41,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: "Phonote v${{ steps.version.outputs.version_name }} (${{ steps.version.outputs.version_code }})"
-          files: app/build/outputs/apk/debug/app-debug.apk
+          files: app/build/outputs/apk/debug/Phonote-v*.apk
           generate_release_notes: true
