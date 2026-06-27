@@ -31,8 +31,8 @@ jobs:
       - name: Get version from build.gradle.kts
         id: version
         run: |
-          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | sed 's/.*= \([0-9]*\).*/\1/')
+          VERSION_NAME=$(grep -E '^\s*versionName\s*=\s*"[^"]*"' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_CODE=$(grep -E '^\s*versionCode\s*=\s*[0-9]+' app/build.gradle.kts | sed 's/.*= \([0-9]*\).*/\1/')
           echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
 
