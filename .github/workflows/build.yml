@@ -1,0 +1,45 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Use official Gradle mirror for CI
+        run: sed -i 's|mirrors.cloud.tencent.com/gradle|services.gradle.org/distributions|g' gradle/wrapper/gradle-wrapper.properties
+
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Get version from build.gradle.kts
+        id: version
+        run: |
+          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | sed 's/.*= \([0-9]*\).*/\1/')
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Phonote v${{ steps.version.outputs.version_name }} (${{ steps.version.outputs.version_code }})"
+          files: app/build/outputs/apk/debug/Phonote-v*.apk
+          generate_release_notes: true
