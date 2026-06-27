@@ -1,0 +1,29 @@
+Phonote
+Copyright (C) 2025 wuzeyu
+
+This project is licensed under the GNU General Public License v3.0.
+See the LICENSE file for the full license text.
+
+This project includes the following third-party components:
+
+1. FluidMarkdown (AntGroup)
+   Licensed under the Apache License, Version 2.0
+   Copyright (C) AntGroup
+   https://github.com/antgroup/FluidMarkdown
+
+2. Markwon (vendored/forked modules: markwon-core, markwon-ext-latex,
+   markwon-ext-strikethrough, markwon-ext-tables, markwon-ext-tasklist,
+   markwon-html, markwon-image, markwon-inline-parser, markwon-syntax-highlight)
+   Licensed under the Apache License, Version 2.0
+   Copyright (C) Denis Nikolenko (noties)
+   https://github.com/noties/Markwon
+
+3. NanoHTTPD
+   Licensed under the MIT License
+   Copyright (C) 2012-2023 Paul Sault & Volker Grass
+   https://github.com/NanoHTTPD/nanohttpd
+
+4. Gson
+   Licensed under the Apache License, Version 2.0
+   Copyright (C) Google Inc.
+   https://github.com/google/gson

@@ -4,10 +4,10 @@
     <selectionStates>
       <SelectionState runConfigName="Phonote.app">
         <option name="selectionMode" value="DROPDOWN" />
-        <DropdownSelection timestamp="2026-06-27T02:35:58.816268573Z">
+        <DropdownSelection timestamp="2026-06-27T04:17:58.700137297Z">
           <Target type="DEFAULT_BOOT">
             <handle>
-              <DeviceId pluginId="PhysicalDevice" identifier="serial=223a3a5f" />
+              <DeviceId pluginId="PhysicalDevice" identifier="serial=e0718e1d" />
             </handle>
           </Target>
         </DropdownSelection>

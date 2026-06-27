@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -66,6 +67,25 @@ class MainActivity : ComponentActivity() {
 
     private fun getPrefs() = getSharedPreferences("phonote_prefs", MODE_PRIVATE)
 
+    override fun attachBaseContext(newBase: Context) {
+        val prefs = newBase.getSharedPreferences("phonote_prefs", MODE_PRIVATE)
+        val langName = prefs.getString("language", "SYSTEM") ?: "SYSTEM"
+        val langCode = try { Language.valueOf(langName).code } catch (_: Exception) { "" }
+        if (langCode.isNotEmpty()) {
+            val locale = if (langCode.contains("-r")) {
+                val parts = langCode.split("-r", limit = 2)
+                java.util.Locale(parts[0], parts[1])
+            } else {
+                java.util.Locale(langCode)
+            }
+            val config = android.content.res.Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            super.attachBaseContext(newBase.createConfigurationContext(config))
+        } else {
+            super.attachBaseContext(newBase)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -76,7 +96,12 @@ class MainActivity : ComponentActivity() {
                 try { ThemeMode.valueOf(name) } catch (_: Exception) { ThemeMode.LIGHT }
             }
             val themeMode = remember { mutableStateOf(savedTheme) }
-            val serverIpState = remember { mutableStateOf("获取中...") }
+            val savedLang = remember {
+                val name = getPrefs().getString("language", "SYSTEM") ?: "SYSTEM"
+                try { Language.valueOf(name) } catch (_: Exception) { Language.SYSTEM }
+            }
+            val language = remember { mutableStateOf(savedLang) }
+            val serverIpState = remember { mutableStateOf(getString(R.string.loading)) }
             val savedPort = remember { mutableStateOf(getPrefs().getInt("server_port", 8080).toString()) }
 
             LaunchedEffect(themeMode.value) {
@@ -89,6 +114,8 @@ class MainActivity : ComponentActivity() {
                     onServerControl = { start -> controlServer(start, serverIpState) },
                     themeMode = themeMode.value,
                     onThemeChange = { themeMode.value = it },
+                    language = language.value,
+                    onLanguageChange = { language.value = it; getPrefs().edit().putString("language", it.name).apply(); recreate() },
                     onExport = { onTreePicked = { uri -> launchExport(uri) }; treePicker.launch(null) },
                     onImport = { parentId -> onTreePicked = { uri -> launchImport(uri, parentId) }; treePicker.launch(null) },
                     serverIp = serverIpState.value,
@@ -106,7 +133,9 @@ class MainActivity : ComponentActivity() {
 
     private fun controlServer(start: Boolean, serverIpState: MutableState<String>) {
         if (start) {
-            if (httpServer == null) httpServer = NotesHttpServer(this, 8080) { }
+            val port = getPrefs().getInt("server_port", 8080)
+            httpServer?.stop()
+            httpServer = NotesHttpServer(this, port) { }
             try { httpServer?.start() } catch (_: Exception) {}
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             lifecycleScope.launch(Dispatchers.IO) {
@@ -116,7 +145,7 @@ class MainActivity : ComponentActivity() {
         } else {
             httpServer?.stop(); httpServer = null
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            serverIpState.value = "获取中..."
+            serverIpState.value = getString(R.string.loading)
         }
     }
 
@@ -149,7 +178,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             doExport(0, rootDir)
-            withContext(Dispatchers.Main) { snackbarMessage.value = "导出完成：更新 $updatedCount 项，跳过 $skippedCount 项（无需更新）" }
+            withContext(Dispatchers.Main) { snackbarMessage.value = getString(R.string.export_done, updatedCount, skippedCount) }
         }
     }
 
@@ -158,7 +187,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             var skippedCount = 0; var importedCount = 0
             val rootDir = DocumentFile.fromTreeUri(applicationContext, treeUri)
-            if (rootDir == null) { withContext(Dispatchers.Main) { snackbarMessage.value = "导入失败：无法访问所选目录" }; return@launch }
+            if (rootDir == null) { withContext(Dispatchers.Main) { snackbarMessage.value = getString(R.string.import_failed) }; return@launch }
 
             fun doImport(dir: DocumentFile, targetParentId: Long) {
                 for (child in dir.listFiles()) {
@@ -182,7 +211,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
             doImport(rootDir, parentId)
-            withContext(Dispatchers.Main) { snackbarMessage.value = "导入完成：更新 $importedCount 项，跳过 $skippedCount 项"; refreshTrigger.intValue++ }
+            withContext(Dispatchers.Main) { snackbarMessage.value = getString(R.string.import_done, importedCount, skippedCount); refreshTrigger.intValue++ }
         }
     }
 
@@ -193,7 +222,11 @@ val snackbarMessage = mutableStateOf<String?>(null)
 val refreshTrigger = mutableIntStateOf(0)
 private var lastBackPress = 0L
 
-enum class ThemeMode(val label: String) { LIGHT("浅色"), DARK("深色"), SYSTEM("跟随系统") }
+enum class ThemeMode { LIGHT, DARK, SYSTEM }
+
+enum class Language(val code: String, val labelRes: Int) {
+    ZH("zh", R.string.lang_zh), EN("en", R.string.lang_en), JA("ja", R.string.lang_ja), ZHTR("zh-rTW", R.string.lang_zh_tr), SYSTEM("", R.string.lang_system)
+}
 
 @Composable
 private fun resolveColor(@androidx.annotation.ColorRes resId: Int, isDark: Boolean): Color {
@@ -264,6 +297,7 @@ fun PhonoteTheme(themeMode: ThemeMode = ThemeMode.LIGHT, content: @Composable ()
 fun PhonoteApp(
     httpServer: NotesHttpServer?, onServerControl: (Boolean) -> Unit,
     themeMode: ThemeMode, onThemeChange: (ThemeMode) -> Unit,
+    language: Language, onLanguageChange: (Language) -> Unit,
     onExport: () -> Unit, onImport: (Long) -> Unit,
     serverIp: String, serverPort: String, onPortChange: (String) -> Unit
 ) {
@@ -308,7 +342,7 @@ fun PhonoteApp(
             showSearch -> { showSearch = false }
             batchMode -> { batchMode = false; selectedIds = emptySet() }
             folderStack.isNotEmpty() -> { folderStack = folderStack.dropLast(1); currentFolderId = if (folderStack.isNotEmpty()) folderStack.last().first else 0L }
-            else -> { if (System.currentTimeMillis() - lastBackPress < 2000) activity?.finish() else { lastBackPress = System.currentTimeMillis(); Toast.makeText(context, "再按一次返回键退出", Toast.LENGTH_SHORT).show() } }
+            else -> { if (System.currentTimeMillis() - lastBackPress < 2000) activity?.finish() else { lastBackPress = System.currentTimeMillis(); Toast.makeText(context, context.getString(R.string.press_back_exit), Toast.LENGTH_SHORT).show() } }
         }
     }
 
@@ -327,46 +361,59 @@ fun PhonoteApp(
             onBack = { editingNote = null; isViewMode = false; highlightKeyword = ""; scope.launch { loadNotes() } },
             onToggleMode = { isViewMode = !isViewMode },
             onSave = { t, c -> scope.launch(Dispatchers.IO) { app.database.noteDao().update(editingNote!!.copy(title = t, content = c, updatedAt = System.currentTimeMillis())) } },
-            onDelete = { scope.launch(Dispatchers.IO) { app.database.noteDao().deleteByIdCascade(editingNote!!.id); withContext(Dispatchers.Main) { editingNote = null; isViewMode = false; highlightKeyword = ""; loadNotes(); snackbarHostState.showSnackbar("已删除") } } })
+            onDelete = { scope.launch(Dispatchers.IO) { app.database.noteDao().deleteByIdCascade(editingNote!!.id); withContext(Dispatchers.Main) { editingNote = null; isViewMode = false; highlightKeyword = ""; loadNotes(); snackbarHostState.showSnackbar(context.getString(R.string.deleted)) } } })
         return@PhonoteApp
     }
 
     var showSettingsDialog by remember { mutableStateOf(false) }
 
     if (showSettingsDialog) {
+        val themeLabel = @Composable { mode: ThemeMode -> when (mode) { ThemeMode.LIGHT -> stringResource(R.string.theme_light); ThemeMode.DARK -> stringResource(R.string.theme_dark); ThemeMode.SYSTEM -> stringResource(R.string.theme_system) } }
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
-            title = { Text("设置") },
+            title = { Text(stringResource(R.string.settings)) },
             text = {
                 Column {
-                    Text("外观", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                    Text(stringResource(R.string.appearance), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                     Spacer(modifier = Modifier.height(4.dp))
                     ThemeMode.entries.forEach { mode ->
                         Row(modifier = Modifier.fillMaxWidth().clickable { onThemeChange(mode) }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (themeMode == mode) Icon(Icons.Filled.Check, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                             else Spacer(modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(mode.label)
+                            Text(themeLabel(mode))
                         }
                     }
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text("网络", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                    Text(stringResource(R.string.language), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    var langExpanded by remember { mutableStateOf(false) }
+                    ExposedDropdownMenuBox(expanded = langExpanded, onExpandedChange = { langExpanded = it }) {
+                        OutlinedTextField(value = stringResource(language.labelRes), onValueChange = {}, readOnly = true, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = langExpanded) }, modifier = Modifier.fillMaxWidth().menuAnchor())
+                        ExposedDropdownMenu(expanded = langExpanded, onDismissRequest = { langExpanded = false }) {
+                            Language.entries.forEach { lang ->
+                                DropdownMenuItem(text = { Text(stringResource(lang.labelRes)) }, onClick = { onLanguageChange(lang); langExpanded = false })
+                            }
+                        }
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                    Text(stringResource(R.string.network), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                     Spacer(modifier = Modifier.height(4.dp))
                     var portText by remember { mutableStateOf(serverPort) }
                     OutlinedTextField(value = portText, onValueChange = { portText = it.filter { c -> c.isDigit() }; onPortChange(portText) },
-                        label = { Text("HTTP 端口") }, singleLine = true,
+                        label = { Text(stringResource(R.string.http_port)) }, singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                    Text("数据", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
+                    Text(stringResource(R.string.data), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.outline)
                     Spacer(modifier = Modifier.height(4.dp))
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = { showSettingsDialog = false; onExport() }, modifier = Modifier.weight(1f)) { Text("导出") }
-                        Button(onClick = { showSettingsDialog = false; onImport(currentFolderId) }, modifier = Modifier.weight(1f)) { Text("导入") }
+                        Button(onClick = { showSettingsDialog = false; onExport() }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.export_btn)) }
+                        Button(onClick = { showSettingsDialog = false; onImport(currentFolderId) }, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.import_btn)) }
                     }
                 }
             },
-            confirmButton = { TextButton(onClick = { showSettingsDialog = false }) { Text("关闭") } }
+            confirmButton = { TextButton(onClick = { showSettingsDialog = false }) { Text(stringResource(R.string.close)) } }
         )
     }
 
@@ -386,7 +433,7 @@ fun PhonoteApp(
                     navigationIcon = { IconButton(onClick = { showSettingsDialog = true }) { Icon(Icons.Filled.Settings, "设置", tint = Color.White) } },
                     actions = {
                         IconButton(onClick = { showNewFolderDialog = true }) { Icon(Icons.Filled.CreateNewFolder, "新建文件夹", tint = Color.White) }
-                        IconButton(onClick = { scope.launch(Dispatchers.IO) { val id = app.database.noteDao().insert(NoteEntity(title = "新笔记", parentId = currentFolderId)); val n = app.database.noteDao().getById(id); withContext(Dispatchers.Main) { editingNote = n } } }) { Icon(Icons.Filled.NoteAdd, "新建笔记", tint = Color.White) }
+                        IconButton(onClick = { scope.launch(Dispatchers.IO) { val id = app.database.noteDao().insert(NoteEntity(title = context.getString(R.string.new_note_title), parentId = currentFolderId)); val n = app.database.noteDao().getById(id); withContext(Dispatchers.Main) { editingNote = n } } }) { Icon(Icons.Filled.NoteAdd, null, tint = Color.White) }
                         IconButton(onClick = { Log.d("Phonote", "Search button clicked"); showSearch = true }) { Icon(Icons.Filled.Search, "搜索", tint = Color.White) }
                         IconButton(onClick = { serverRunning = !serverRunning; onServerControl(serverRunning); if (serverRunning) showServerInfo = true }) {
                             Icon(if (serverRunning) Icons.Filled.Stop else Icons.Filled.PlayArrow, "Server", tint = Color.White) }
@@ -399,16 +446,16 @@ fun PhonoteApp(
             if (showServerInfo && serverRunning) {
                 Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("HTTP 服务已启动", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text(stringResource(R.string.server_started), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text("http://$serverIp:$serverPort", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Text("同一 WiFi 网络下的设备可通过浏览器访问", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
+                        Text(stringResource(R.string.server_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f))
                     }
                 }
             }
             if (folderStack.isNotEmpty()) {
                 Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("全部", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { currentFolderId = 0; folderStack = emptyList() })
+                    Text(stringResource(R.string.all), color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { currentFolderId = 0; folderStack = emptyList() })
                     folderStack.forEach { (id, name) ->
                         Icon(Icons.Filled.ChevronRight, null, modifier = Modifier.size(16.dp))
                         Text(name, color = if (id == currentFolderId) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.primary, modifier = Modifier.clickable { val idx = folderStack.indexOfFirst { it.first == id }; folderStack = folderStack.take(idx + 1); currentFolderId = id })
@@ -420,8 +467,8 @@ fun PhonoteApp(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(Icons.Filled.FolderOff, null, modifier = Modifier.size(64.dp), tint = MaterialTheme.colorScheme.outline)
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text("暂无内容", color = MaterialTheme.colorScheme.outline)
-                        Text("点击右下角按钮创建", color = MaterialTheme.colorScheme.outline, fontSize = 14.sp)
+                        Text(stringResource(R.string.no_content), color = MaterialTheme.colorScheme.outline)
+                        Text(stringResource(R.string.create_hint), color = MaterialTheme.colorScheme.outline, fontSize = 14.sp)
                     }
                 }
             } else {
@@ -431,7 +478,7 @@ fun PhonoteApp(
                             val sel = selectedIds.contains(folder.id); var showMenu by remember { mutableStateOf(false) }
                             ListItem(headlineContent = { Text(folder.title, fontWeight = FontWeight.Medium) },
                                 leadingContent = { if (batchMode) Checkbox(checked = sel, onCheckedChange = { selectedIds = if (sel) selectedIds - folder.id else selectedIds + folder.id }) else Icon(Icons.Filled.Folder, null, tint = Color(0xFFFFC107)) },
-                                trailingContent = { if (!batchMode) Box { IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, "更多") }; DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { DropdownMenuItem(text = { Text("删除", color = Color(0xFFEF5350)) }, onClick = { showMenu = false; deleteTargetFolder = folder }, leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Color(0xFFEF5350)) }) } } },
+                                trailingContent = { if (!batchMode) Box { IconButton(onClick = { showMenu = true }) { Icon(Icons.Filled.MoreVert, stringResource(R.string.more)) }; DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) { DropdownMenuItem(text = { Text(stringResource(R.string.delete), color = Color(0xFFEF5350)) }, onClick = { showMenu = false; deleteTargetFolder = folder }, leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Color(0xFFEF5350)) }) } } },
                                 modifier = Modifier.combinedClickable(
                                     onClick = {
                                         if (batchMode) {
@@ -480,15 +527,15 @@ fun PhonoteApp(
         }
     }
 
-    if (showBatchDeleteDialog) { val count = selectedIds.size; AlertDialog(onDismissRequest = { showBatchDeleteDialog = false }, title = { Text("批量删除") }, text = { Text("确定要删除选中的 $count 项吗？此操作不可恢复。") }, confirmButton = { TextButton(onClick = { showBatchDeleteDialog = false; scope.launch(Dispatchers.IO) { selectedIds.forEach { id -> app.database.noteDao().deleteByIdCascade(id) }; withContext(Dispatchers.Main) { batchMode = false; selectedIds = emptySet(); loadNotes(); snackbarHostState.showSnackbar("已删除 $count 项") } } }) { Text("删除", color = Color(0xFFEF5350)) } }, dismissButton = { TextButton(onClick = { showBatchDeleteDialog = false }) { Text("取消") } }) }
-    if (deleteTargetFolder != null) { AlertDialog(onDismissRequest = { deleteTargetFolder = null }, title = { Text("确认删除") }, text = { Text("确定要删除文件夹 \"${deleteTargetFolder!!.title}\" 及其所有内容吗？此操作不可恢复。") }, confirmButton = { TextButton(onClick = { val f = deleteTargetFolder!!; deleteTargetFolder = null; scope.launch(Dispatchers.IO) { app.database.noteDao().deleteByIdCascade(f.id); withContext(Dispatchers.Main) { loadNotes() } } }) { Text("删除", color = Color(0xFFEF5350)) } }, dismissButton = { TextButton(onClick = { deleteTargetFolder = null }) { Text("取消") } }) }
-    if (showNewFolderDialog) { var folderName by remember { mutableStateOf("") }; AlertDialog(onDismissRequest = { showNewFolderDialog = false }, title = { Text("新建文件夹") }, text = { OutlinedTextField(value = folderName, onValueChange = { folderName = it }, label = { Text("文件夹名称") }, singleLine = true) }, confirmButton = { TextButton(onClick = { if (folderName.isNotBlank()) { scope.launch(Dispatchers.IO) { app.database.noteDao().insert(NoteEntity(title = folderName.trim(), isFolder = true, parentId = currentFolderId)); withContext(Dispatchers.Main) { showNewFolderDialog = false; loadNotes() } } } }) { Text("创建") } }, dismissButton = { TextButton(onClick = { showNewFolderDialog = false }) { Text("取消") } }) }
+    if (showBatchDeleteDialog) { val count = selectedIds.size; AlertDialog(onDismissRequest = { showBatchDeleteDialog = false }, title = { Text(stringResource(R.string.batch_delete)) }, text = { Text(stringResource(R.string.batch_delete_confirm, count)) }, confirmButton = { TextButton(onClick = { showBatchDeleteDialog = false; scope.launch(Dispatchers.IO) { selectedIds.forEach { id -> app.database.noteDao().deleteByIdCascade(id) }; withContext(Dispatchers.Main) { batchMode = false; selectedIds = emptySet(); loadNotes(); snackbarHostState.showSnackbar(context.getString(R.string.deleted_count, count)) } } }) { Text(stringResource(R.string.delete), color = Color(0xFFEF5350)) } }, dismissButton = { TextButton(onClick = { showBatchDeleteDialog = false }) { Text(stringResource(R.string.cancel)) } }) }
+    if (deleteTargetFolder != null) { val f = deleteTargetFolder!!; AlertDialog(onDismissRequest = { deleteTargetFolder = null }, title = { Text(stringResource(R.string.confirm_delete_title)) }, text = { Text(stringResource(R.string.delete_folder_confirm, f.title)) }, confirmButton = { TextButton(onClick = { deleteTargetFolder = null; scope.launch(Dispatchers.IO) { app.database.noteDao().deleteByIdCascade(f.id); withContext(Dispatchers.Main) { loadNotes() } } }) { Text(stringResource(R.string.delete), color = Color(0xFFEF5350)) } }, dismissButton = { TextButton(onClick = { deleteTargetFolder = null }) { Text(stringResource(R.string.cancel)) } }) }
+    if (showNewFolderDialog) { var folderName by remember { mutableStateOf("") }; AlertDialog(onDismissRequest = { showNewFolderDialog = false }, title = { Text(stringResource(R.string.new_folder)) }, text = { OutlinedTextField(value = folderName, onValueChange = { folderName = it }, label = { Text(stringResource(R.string.folder_name)) }, singleLine = true) }, confirmButton = { TextButton(onClick = { if (folderName.isNotBlank()) { scope.launch(Dispatchers.IO) { app.database.noteDao().insert(NoteEntity(title = folderName.trim(), isFolder = true, parentId = currentFolderId)); withContext(Dispatchers.Main) { showNewFolderDialog = false; loadNotes() } } } }) { Text(stringResource(R.string.create)) } }, dismissButton = { TextButton(onClick = { showNewFolderDialog = false }) { Text(stringResource(R.string.cancel)) } }) }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(query: String, results: List<NoteEntity>, highlightKeyword: String, onQueryChange: (String) -> Unit, onOpenNote: (NoteEntity, String) -> Unit, onBack: () -> Unit) {
-    Scaffold(topBar = { TopAppBar(title = { OutlinedTextField(value = query, onValueChange = onQueryChange, placeholder = { Text("搜索笔记...") }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface, titleContentColor = MaterialTheme.colorScheme.onSurface)) }) { padding ->
+    Scaffold(topBar = { TopAppBar(title = { OutlinedTextField(value = query, onValueChange = onQueryChange, placeholder = { Text(stringResource(R.string.search_notes)) }, singleLine = true, modifier = Modifier.fillMaxWidth(), textStyle = TextStyle(fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface), colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent)) }, navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, null) } }, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.surface, titleContentColor = MaterialTheme.colorScheme.onSurface)) }) { padding ->
         LazyColumn(modifier = Modifier.padding(padding).fillMaxSize()) {
             items(results, key = { it.id }) { note ->
                 val titleHL = highlightMatch(note.title, query)
@@ -496,7 +543,7 @@ fun SearchScreen(query: String, results: List<NoteEntity>, highlightKeyword: Str
                 val contentHL = highlightMatch(contentSnippet, query)
                 val mc = countMatches(note.content, query)
                 Column(modifier = Modifier.fillMaxWidth().clickable { onOpenNote(note, query) }) {
-                    ListItem(headlineContent = { Text(titleHL, fontWeight = FontWeight.Medium, maxLines = 1) }, supportingContent = { Column { if (contentSnippet.isNotEmpty()) Text(contentHL, maxLines = 3, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.outline, fontSize = 13.sp); if (mc > 1) Text("共 $mc 处匹配", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp)) } }, leadingContent = { Icon(Icons.Filled.Description, null, tint = MaterialTheme.colorScheme.primary) })
+                    ListItem(headlineContent = { Text(titleHL, fontWeight = FontWeight.Medium, maxLines = 1) }, supportingContent = { Column { if (contentSnippet.isNotEmpty()) Text(contentHL, maxLines = 3, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.outline, fontSize = 13.sp); if (mc > 1) Text(stringResource(R.string.matches_found, mc), fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp)) } }, leadingContent = { Icon(Icons.Filled.Description, null, tint = MaterialTheme.colorScheme.primary) })
                     HorizontalDivider(modifier = Modifier.padding(start = 56.dp))
                 }
             }
@@ -537,37 +584,38 @@ fun NoteEditorScreen(note: NoteEntity, isViewMode: Boolean, highlightKeyword: St
     val titleFocusRequester = remember { FocusRequester() }
     var titleFieldValue by remember(note.id) { mutableStateOf(TextFieldValue(note.title, selection = androidx.compose.ui.text.TextRange(note.title.length))) }
 
+    val ctx = LocalContext.current
     LaunchedEffect(note.id) {
-        if (note.title.startsWith("新笔记")) {
+        if (note.title.startsWith(ctx.getString(R.string.new_note_title))) {
             titleFieldValue = titleFieldValue.copy(selection = androidx.compose.ui.text.TextRange(0, note.title.length))
             titleFocusRequester.requestFocus()
         }
     }
 
-    LaunchedEffect(title, content) { if (!hasChanged) return@LaunchedEffect; delay(3500); autoSaveText = "自动保存中..."; onSave(title, content); delay(500); autoSaveText = "已自动保存"; delay(2500); autoSaveText = "" }
+    LaunchedEffect(title, content) { if (!hasChanged) return@LaunchedEffect; delay(3500); autoSaveText = ctx.getString(R.string.auto_saving); onSave(title, content); delay(500); autoSaveText = ctx.getString(R.string.auto_saved); delay(2500); autoSaveText = "" }
 
     val matchPositions = remember(content, highlightKeyword) { if (highlightKeyword.isBlank()) emptyList() else { val pos = mutableListOf<Int>(); var i = 0; val lc = content.lowercase(); val lk = highlightKeyword.lowercase(); while (true) { i = lc.indexOf(lk, i); if (i < 0) break; pos.add(i); i += lk.length }; pos } }
     var showMatchNav by remember { mutableStateOf(false) }
     var currentMatchIdx by remember { mutableIntStateOf(0) }
 
     Scaffold(topBar = {
-        TopAppBar(title = { Row(verticalAlignment = Alignment.CenterVertically) { Text("编辑", fontSize = 16.sp); if (autoSaveText.isNotEmpty()) { Spacer(modifier = Modifier.width(8.dp)); Text(autoSaveText, fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f)) } } },
-            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, "返回") } },
+        TopAppBar(title = { Row(verticalAlignment = Alignment.CenterVertically) { Text(stringResource(R.string.editing), fontSize = 16.sp); if (autoSaveText.isNotEmpty()) { Spacer(modifier = Modifier.width(8.dp)); Text(autoSaveText, fontSize = 12.sp, color = Color.White.copy(alpha = 0.7f)) } } },
+            navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Filled.ArrowBack, null) } },
             actions = {
-                if (matchPositions.size > 1) IconButton(onClick = { showMatchNav = !showMatchNav }) { Icon(Icons.Filled.FormatListNumbered, "匹配位置", tint = Color.White) }
+                if (matchPositions.size > 1) IconButton(onClick = { showMatchNav = !showMatchNav }) { Icon(Icons.Filled.FormatListNumbered, stringResource(R.string.match_positions), tint = Color.White) }
                 IconButton(onClick = onToggleMode) { Icon(if (isViewMode) Icons.Filled.Edit else Icons.Filled.Visibility, null) }
-                IconButton(onClick = { onSave(title, content); autoSaveText = "已保存"; hasChanged = false }) { Icon(Icons.Filled.Save, "保存") }
-                IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Filled.Delete, "删除", tint = Color(0xFFEF5350)) }
+                IconButton(onClick = { onSave(title, content); autoSaveText = ctx.getString(R.string.saved); hasChanged = false }) { Icon(Icons.Filled.Save, null) }
+                IconButton(onClick = { showDeleteDialog = true }) { Icon(Icons.Filled.Delete, null, tint = Color(0xFFEF5350)) }
             },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primary, titleContentColor = Color.White, navigationIconContentColor = Color.White, actionIconContentColor = Color.White))
     }) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize().imePadding()) {
-            if (showMatchNav && matchPositions.isNotEmpty()) { Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) { Column(modifier = Modifier.padding(8.dp)) { Text("匹配位置 (${currentMatchIdx + 1}/${matchPositions.size})", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline); matchPositions.forEachIndexed { index, pos -> val ls = content.lastIndexOf('\n', (pos - 1).coerceAtLeast(0)) + 1; val le = content.indexOf('\n', pos).let { if (it < 0) content.length else it }; val snip = content.substring(ls, le).take(60); Row(modifier = Modifier.fillMaxWidth().clickable { currentMatchIdx = index }.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { Text("${index + 1}. ", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold); Text(snip, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (index == currentMatchIdx) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) } } } } }
-            OutlinedTextField(value = titleFieldValue, onValueChange = { titleFieldValue = it; title = it.text; hasChanged = true }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(titleFocusRequester), label = { Text("标题") }, singleLine = true)
-            if (isViewMode) MarkdownPreview(content = content, modifier = Modifier.fillMaxSize().padding(16.dp)) else OutlinedTextField(value = content, onValueChange = { content = it; hasChanged = true }, modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp), label = { Text("内容 (Markdown)") }, textStyle = TextStyle(fontSize = 15.sp, lineHeight = 24.sp))
+            if (showMatchNav && matchPositions.isNotEmpty()) { Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) { Column(modifier = Modifier.padding(8.dp)) { Text(stringResource(R.string.match_position, currentMatchIdx + 1, matchPositions.size), fontSize = 12.sp, color = MaterialTheme.colorScheme.outline); matchPositions.forEachIndexed { index, pos -> val ls = content.lastIndexOf('\n', (pos - 1).coerceAtLeast(0)) + 1; val le = content.indexOf('\n', pos).let { if (it < 0) content.length else it }; val snip = content.substring(ls, le).take(60); Row(modifier = Modifier.fillMaxWidth().clickable { currentMatchIdx = index }.padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) { Text("${index + 1}. ", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold); Text(snip, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, color = if (index == currentMatchIdx) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface) } } } } }
+            OutlinedTextField(value = titleFieldValue, onValueChange = { titleFieldValue = it; title = it.text; hasChanged = true }, modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp).focusRequester(titleFocusRequester), label = { Text(stringResource(R.string.title_label)) }, singleLine = true)
+            if (isViewMode) MarkdownPreview(content = content, modifier = Modifier.fillMaxSize().padding(16.dp)) else OutlinedTextField(value = content, onValueChange = { content = it; hasChanged = true }, modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 16.dp), label = { Text(stringResource(R.string.content_label)) }, textStyle = TextStyle(fontSize = 15.sp, lineHeight = 24.sp))
         }
     }
-    if (showDeleteDialog) { AlertDialog(onDismissRequest = { showDeleteDialog = false }, title = { Text("确认删除") }, text = { Text("确定要删除 \"${note.title}\" 吗？此操作不可恢复。") }, confirmButton = { TextButton(onClick = { showDeleteDialog = false; onDelete() }) { Text("删除", color = Color(0xFFEF5350)) } }, dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("取消") } }) }
+    if (showDeleteDialog) { AlertDialog(onDismissRequest = { showDeleteDialog = false }, title = { Text(stringResource(R.string.confirm_delete_title)) }, text = { Text(stringResource(R.string.delete_note_confirm, note.title)) }, confirmButton = { TextButton(onClick = { showDeleteDialog = false; onDelete() }) { Text(stringResource(R.string.delete), color = Color(0xFFEF5350)) } }, dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text(stringResource(R.string.cancel)) } }) }
 }
 
 class MdScrollView(context: android.content.Context) : android.widget.ScrollView(context) {
