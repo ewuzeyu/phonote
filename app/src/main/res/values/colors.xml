@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Launcher icon background -->
-    <color name="ic_launcher_background">#D6E8FC</color>
+    <color name="ic_launcher_background">#FF9800</color>
 
     <!-- Material 3 Light Theme Colors -->
     <color name="md_theme_light_primary">#FFA04E</color>
@@ -29,30 +29,4 @@
 
     <!-- Status bar -->
     <color name="md_theme_light_statusBar">#1565C0</color>
-
-    <color name="md_theme_dark_primary">#FFA04E</color>
-    <color name="md_theme_dark_onPrimary">#003258</color>
-    <color name="md_theme_dark_primaryContainer">#00497D</color>
-    <color name="md_theme_dark_onPrimaryContainer">#D1E4FF</color>
-    <color name="md_theme_dark_secondary">#90A4AE</color>
-    <color name="md_theme_dark_onSecondary">#263238</color>
-    <color name="md_theme_dark_secondaryContainer">#37474F</color>
-    <color name="md_theme_dark_onSecondaryContainer">#CFD8DC</color>
-    <color name="md_theme_dark_tertiary">#80CBC4</color>
-    <color name="md_theme_dark_onTertiary">#003D33</color>
-    <color name="md_theme_dark_background">#121212</color>
-    <color name="md_theme_dark_onBackground">#E0E0E0</color>
-    <color name="md_theme_dark_surface">#1E1E1E</color>
-    <color name="md_theme_dark_onSurface">#E0E0E0</color>
-    <color name="md_theme_dark_surfaceVariant">#2C2C2C</color>
-    <color name="md_theme_dark_onSurfaceVariant">#BDBDBD</color>
-    <color name="md_theme_dark_outline">#9E9E9E</color>
-    <color name="md_theme_dark_error">#EF5350</color>
-    <color name="md_theme_dark_onError">#FFFFFF</color>
-    <color name="md_theme_dark_inverseSurface">#E0E0E0</color>
-    <color name="md_theme_dark_inverseOnSurface">#303030</color>
-    <color name="md_theme_dark_inversePrimary">#1976D2</color>
-
-    <!-- Status bar -->
-    <color name="md_theme_dark_statusBar">#003258</color>
 </resources>
